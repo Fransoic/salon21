@@ -1,0 +1,3 @@
+- Mobile Blackjack Webapp: defer advanced continuity beyond the core playable experience.
+- Deferred goal: restore an unfinished round after page refresh, including active-hand progression and safe recovery of in-progress game state from localStorage.
+- Deferred goal: add richer cumulative statistics beyond the core bankroll loop if implementation pressure requires trimming the initial release.
