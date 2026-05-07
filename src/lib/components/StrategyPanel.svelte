@@ -1,23 +1,38 @@
 <script lang="ts">
+  import { scoreHand } from '../game/rules'
+  import type { Card, Rank } from '../game/types'
   import type { AppLanguage } from '../storage'
 
   export let language: AppLanguage = 'en'
+  export let allowSurrender = false
+  export let activeHandCards: Card[] = []
+  export let dealerUpcard: Rank | null = null
 
   type StrategyCode = 'H' | 'S' | 'Dh' | 'Ds' | 'P' | 'Rh'
+  type StrategySectionKey = 'hard' | 'soft' | 'pairs'
   type StrategyRow = {
     label: string
     moves: StrategyCode[]
   }
+  type StrategyFocus = {
+    section: StrategySectionKey
+    rowLabel: string
+    dealerHeader: string
+  }
+  type StrategySection = {
+    key: StrategySectionKey
+    title: string
+    rows: StrategyRow[]
+  }
 
   const dealerHeaders = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'A']
+  const tenValueRanks = new Set<Rank>(['10', 'J', 'Q', 'K'])
 
   const panelCopy = {
     en: {
-      kicker: 'Strategy',
-      title: 'Basic strategy chart',
-      hint: 'Optimized for 6 decks, dealer stands on soft 17, double after split, and late surrender.',
       dealerUpcard: 'Dealer upcard',
       playerHand: 'Player hand',
+      playerHandCompact: 'Hand',
       legend: 'Legend',
       hardTotals: 'Hard totals',
       softTotals: 'Soft totals',
@@ -32,11 +47,9 @@
       },
     },
     fr: {
-      kicker: 'Strategie',
-      title: 'Tableau de strategie de base',
-      hint: 'Optimise pour 6 decks, croupier reste sur soft 17, double apres separation et abandon tardif.',
       dealerUpcard: 'Carte visible du croupier',
       playerHand: 'Main joueur',
+      playerHandCompact: 'Main',
       legend: 'Legende',
       hardTotals: 'Totaux durs',
       softTotals: 'Totaux soft',
@@ -121,32 +134,136 @@
     },
   }
 
+  function rowsForSurrenderSetting(rows: StrategyRow[], surrenderEnabled: boolean): StrategyRow[] {
+    if (surrenderEnabled) {
+      return rows
+    }
+
+    return rows.map((row) => ({
+      ...row,
+      moves: row.moves.map((move) => (move === 'Rh' ? 'H' : move)),
+    }))
+  }
+
+  function dealerHeaderForRank(rank: Rank | null): string | null {
+    if (!rank) {
+      return null
+    }
+
+    if (tenValueRanks.has(rank)) {
+      return '10'
+    }
+
+    return rank
+  }
+
+  function pairRowLabel(cards: Card[]): string | null {
+    if (cards.length !== 2 || cards[0]?.rank !== cards[1]?.rank) {
+      return null
+    }
+
+    const rank = cards[0].rank
+    if (tenValueRanks.has(rank)) {
+      return '10,10'
+    }
+
+    return `${rank},${rank}`
+  }
+
+  function softRowLabel(total: number): string | null {
+    if (total <= 14) {
+      return 'A,2-A,3'
+    }
+
+    if (total <= 16) {
+      return 'A,4-A,5'
+    }
+
+    switch (total) {
+      case 17:
+        return 'A,6'
+      case 18:
+        return 'A,7'
+      case 19:
+        return 'A,8'
+      case 20:
+        return 'A,9'
+      default:
+        return null
+    }
+  }
+
+  function hardRowLabel(total: number): string | null {
+    if (total >= 5 && total <= 8) {
+      return '5-8'
+    }
+
+    if (total === 13 || total === 14) {
+      return '13-14'
+    }
+
+    if (total >= 17) {
+      return '17+'
+    }
+
+    if (total >= 9 && total <= 16) {
+      return String(total)
+    }
+
+    return null
+  }
+
+  function strategyFocusFor(cards: Card[], upcard: Rank | null): StrategyFocus | null {
+    const dealerHeader = dealerHeaderForRank(upcard)
+    if (!cards.length || !dealerHeader) {
+      return null
+    }
+
+    const pairLabel = pairRowLabel(cards)
+    if (pairLabel) {
+      return { section: 'pairs', rowLabel: pairLabel, dealerHeader }
+    }
+
+    const score = scoreHand(cards)
+    if (score.isBust || score.total >= 21) {
+      return null
+    }
+
+    const rowLabel = score.isSoft ? softRowLabel(score.total) : hardRowLabel(score.total)
+    if (!rowLabel) {
+      return null
+    }
+
+    return {
+      section: score.isSoft ? 'soft' : 'hard',
+      rowLabel,
+      dealerHeader,
+    }
+  }
+
+  function isActiveRow(sectionKey: StrategySectionKey, rowLabel: string): boolean {
+    return strategyFocus?.section === sectionKey && strategyFocus.rowLabel === rowLabel
+  }
+
+  function isActiveDealerColumn(header: string): boolean {
+    return strategyFocus?.dealerHeader === header
+  }
+
+  function isActiveCell(sectionKey: StrategySectionKey, rowLabel: string, header: string): boolean {
+    return isActiveRow(sectionKey, rowLabel) && isActiveDealerColumn(header)
+  }
+
   $: content = panelCopy[language]
+  $: legendEntries = (Object.entries(content.codes) as Array<[StrategyCode, string]>).filter(([code]) => allowSurrender || code !== 'Rh')
+  $: strategyFocus = strategyFocusFor(activeHandCards, dealerUpcard)
   $: sections = [
-    { title: content.hardTotals, rows: strategyRows[language].hard },
-    { title: content.softTotals, rows: strategyRows[language].soft },
-    { title: content.pairs, rows: strategyRows[language].pairs },
-  ]
+    { key: 'hard', title: content.hardTotals, rows: rowsForSurrenderSetting(strategyRows[language].hard, allowSurrender) },
+    { key: 'soft', title: content.softTotals, rows: rowsForSurrenderSetting(strategyRows[language].soft, allowSurrender) },
+    { key: 'pairs', title: content.pairs, rows: rowsForSurrenderSetting(strategyRows[language].pairs, allowSurrender) },
+  ] satisfies StrategySection[]
 </script>
 
 <aside class="strategy-panel">
-  <div class="strategy-head">
-    <div>
-      <p class="panel-kicker">{content.kicker}</p>
-      <h3>{content.title}</h3>
-    </div>
-    <p class="strategy-hint">{content.hint}</p>
-  </div>
-
-  <div class="strategy-legend" aria-label={content.legend}>
-    {#each Object.entries(content.codes) as [code, label]}
-      <div class="legend-item">
-        <span class={`strategy-chip strategy-chip--${code}`}>{code}</span>
-        <span>{label}</span>
-      </div>
-    {/each}
-  </div>
-
   <div class="strategy-sections">
     {#each sections as section}
       <section class="strategy-block">
@@ -159,18 +276,24 @@
           <table class="strategy-table">
             <thead>
               <tr>
-                <th scope="col">{content.playerHand}</th>
+                <th scope="col" class="strategy-row-header">
+                  <span class="strategy-label-full">{content.playerHand}</span>
+                  <span class="strategy-label-compact">{content.playerHandCompact}</span>
+                </th>
                 {#each dealerHeaders as header}
-                  <th scope="col">{header}</th>
+                  <th scope="col" class:strategy-axis--active={isActiveDealerColumn(header)}>{header}</th>
                 {/each}
               </tr>
             </thead>
             <tbody>
               {#each section.rows as row}
-                <tr>
-                  <th scope="row">{row.label}</th>
-                  {#each row.moves as move}
-                    <td>
+                <tr class:strategy-row--active={isActiveRow(section.key, row.label)}>
+                  <th scope="row" class:strategy-axis--active={isActiveRow(section.key, row.label)}>{row.label}</th>
+                  {#each row.moves as move, columnIndex}
+                    <td
+                      class:strategy-column--active={isActiveDealerColumn(dealerHeaders[columnIndex])}
+                      class:strategy-cell--active={isActiveCell(section.key, row.label, dealerHeaders[columnIndex])}
+                    >
                       <span class={`strategy-chip strategy-chip--${move}`} title={content.codes[move]}>{move}</span>
                     </td>
                   {/each}
@@ -182,27 +305,21 @@
       </section>
     {/each}
   </div>
+
+  <div class="strategy-legend" aria-label={content.legend}>
+    {#each legendEntries as [code, label]}
+      <div class="legend-item">
+        <span class={`strategy-chip strategy-chip--${code}`}>{code}</span>
+        <span>{label}</span>
+      </div>
+    {/each}
+  </div>
 </aside>
 
 <style>
   .strategy-panel {
     display: grid;
     gap: 14px;
-  }
-
-  .strategy-head {
-    display: grid;
-    gap: 8px;
-    padding: 14px;
-    border-radius: 20px;
-    border: 1px solid rgba(242, 227, 183, 0.08);
-    background: rgba(242, 227, 183, 0.06);
-    box-shadow: var(--shadow-sm);
-  }
-
-  .strategy-hint {
-    color: rgba(246, 240, 223, 0.76);
-    max-width: 58ch;
   }
 
   .strategy-legend,
@@ -260,6 +377,14 @@
     border-collapse: collapse;
   }
 
+  .strategy-row-header {
+    min-width: 6.5rem;
+  }
+
+  .strategy-label-compact {
+    display: none;
+  }
+
   .strategy-table th,
   .strategy-table td {
     padding: 8px 6px;
@@ -272,12 +397,41 @@
     font-size: 0.78rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+    transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
   }
 
   .strategy-table tbody th {
     text-align: left;
     white-space: nowrap;
     color: var(--ink-100);
+    transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+  }
+
+  .strategy-table td {
+    transition: background-color 160ms ease, box-shadow 160ms ease;
+  }
+
+  .strategy-axis--active,
+  .strategy-row--active > th,
+  .strategy-column--active {
+    background: rgba(209, 141, 77, 0.12);
+  }
+
+  .strategy-axis--active {
+    color: var(--ink-100);
+    box-shadow: inset 0 0 0 1px rgba(209, 141, 77, 0.22);
+  }
+
+  .strategy-cell--active {
+    background:
+      radial-gradient(circle at center, rgba(209, 141, 77, 0.2), rgba(209, 141, 77, 0.08) 70%),
+      rgba(242, 227, 183, 0.04);
+    box-shadow: inset 0 0 0 1px rgba(242, 227, 183, 0.14);
+  }
+
+  .strategy-cell--active .strategy-chip {
+    transform: scale(1.06);
+    box-shadow: 0 0 0 2px rgba(242, 227, 183, 0.16), 0 10px 20px rgba(0, 0, 0, 0.18);
   }
 
   .strategy-chip {
@@ -292,6 +446,7 @@
     font-weight: 700;
     letter-spacing: 0.04em;
     border: 1px solid transparent;
+    transition: transform 160ms ease, box-shadow 160ms ease;
   }
 
   .strategy-chip--H {
@@ -330,13 +485,61 @@
       grid-template-columns: 1fr;
     }
 
+    .legend-item {
+      gap: 8px;
+      padding: 10px;
+      font-size: 0.84rem;
+    }
+
+    .strategy-block {
+      padding: 10px;
+    }
+
     .strategy-block-head {
       align-items: start;
       flex-direction: column;
+      gap: 6px;
+      margin-bottom: 8px;
     }
 
     .strategy-table {
-      min-width: 560px;
+      min-width: 0;
+      table-layout: fixed;
+    }
+
+    .strategy-table th,
+    .strategy-table td {
+      padding: 5px 2px;
+    }
+
+    .strategy-table thead th {
+      font-size: 0.62rem;
+      letter-spacing: 0.04em;
+    }
+
+    .strategy-table tbody th,
+    .strategy-row-header {
+      width: 3.55rem;
+      min-width: 3.55rem;
+      font-size: 0.66rem;
+      line-height: 1.15;
+    }
+
+    .strategy-label-full {
+      display: none;
+    }
+
+    .strategy-label-compact {
+      display: inline;
+    }
+
+    .strategy-chip {
+      min-width: 1.72rem;
+      min-height: 1.45rem;
+      padding: 0 0.22rem;
+      border-radius: 12px;
+      font-size: 0.62rem;
+      letter-spacing: 0.02em;
     }
   }
 </style>

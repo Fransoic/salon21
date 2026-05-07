@@ -6,6 +6,7 @@ import {
     dealRound,
     declineInsurance,
     doubleDown,
+    getActionAvailability,
     hit,
     resetProgress,
     shouldPersistProfile,
@@ -103,6 +104,25 @@ describe('state transitions', () => {
         expect(surrendered.phase).toBe('round-over')
         expect(surrendered.bankroll).toBe(490)
         expect(surrendered.playerHands[0].result?.outcome).toBe('surrender')
+    })
+
+    it('can disable surrender through table controls', () => {
+        const starting = {
+            ...createInitialState(),
+            currentBet: 20,
+            shoe: forceShoe([
+                createCard('9', 'spades'),
+                createCard('6', 'hearts'),
+                createCard('7', 'clubs'),
+                createCard('5', 'diamonds'),
+            ]),
+        }
+
+        const dealt = dealRound(starting)
+        const availability = getActionAvailability(dealt, { allowSurrender: false })
+
+        expect(availability.surrender.enabled).toBe(false)
+        expect(availability.surrender.reason).toBe('Late surrender is disabled in table controls.')
     })
 
     it('settles a completed round after standing', () => {

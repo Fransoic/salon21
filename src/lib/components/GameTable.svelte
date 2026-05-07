@@ -6,7 +6,7 @@
   import { formatMoney } from '../format'
   import { translateDynamic, uiText } from '../i18n'
   import { scoreHand } from '../game/rules'
-  import type { Card, PlayerHand, RoundPhase, Suit } from '../game/types'
+  import type { Card, PlayerActionName, PlayerHand, RoundPhase, Suit } from '../game/types'
   import type { AppLanguage } from '../storage'
 
   export let dealerHand: Card[] = []
@@ -14,6 +14,7 @@
   export let activeHandIndex = 0
   export let phase: RoundPhase = 'betting'
   export let lastRoundDelta = 0
+  export let lastPlayerAction: PlayerActionName | null = null
   export let language: AppLanguage = 'en'
 
   const suitGlyphs: Record<Suit, string> = {
@@ -21,6 +22,22 @@
     hearts: '♥',
     diamonds: '♦',
     clubs: '♣',
+  }
+
+  const dealerRoundOverRevealDelay = 220
+  const dealerRoundOverDrawDelay = 580
+  const dealerActionHandoffPause = 220
+
+  function dealerHandoffPause(action: PlayerActionName | null) {
+    return action === 'stand' || action === 'double' ? dealerActionHandoffPause : 0
+  }
+
+  function dealerRevealDelay(action: PlayerActionName | null) {
+    return dealerRoundOverRevealDelay + dealerHandoffPause(action)
+  }
+
+  function dealerDrawDelay(action: PlayerActionName | null) {
+    return dealerRoundOverDrawDelay + dealerHandoffPause(action)
   }
 
   function isRed(suit: Suit) {
@@ -57,12 +74,21 @@
     return score.isBust ? translateDynamic(currentLanguage, 'Dealer busts') : translateDynamic(currentLanguage, `${score.total}${score.isSoft ? ' soft' : ''}`)
   }
 
-  function dealerCardMotion(index: number) {
+  function dealerCardMotion(index: number, currentPhase: RoundPhase) {
+    if (currentPhase === 'round-over') {
+      return {
+        x: -18,
+        y: -30,
+        duration: 340,
+        delay: index <= 1 ? dealerRevealDelay(lastPlayerAction) : dealerDrawDelay(lastPlayerAction) + (index - 2) * 180,
+      }
+    }
+
     return {
       x: -18,
       y: -30,
-      duration: 260,
-      delay: index * 120,
+      duration: 340,
+      delay: index * 150,
     }
   }
 
@@ -70,8 +96,8 @@
     return {
       x: -12,
       y: 26,
-      duration: 240,
-      delay: index * 90,
+      duration: 320,
+      delay: index * 115,
     }
   }
 
@@ -79,7 +105,7 @@
     _node: Element,
     params: { delay?: number; duration?: number; x?: number; y?: number; rotate?: number; scale?: number } = {},
   ): TransitionConfig {
-    const { delay = 0, duration = 420, x = -24, y = -42, rotate = -14, scale = 0.78 } = params
+    const { delay = 0, duration = 520, x = -24, y = -42, rotate = -14, scale = 0.78 } = params
 
     return {
       delay,
@@ -102,7 +128,7 @@
   }
 
   function revealDealerCard(_node: Element, params: { delay?: number; duration?: number } = {}): TransitionConfig {
-    const { delay = 0, duration = 520 } = params
+    const { delay = 0, duration = 680 } = params
 
     return {
       delay,
@@ -126,13 +152,13 @@
 
   function dealerVisibleCardTransition(
     node: Element,
-    params: { index: number; reveal?: boolean },
+    params: { index: number; phase: RoundPhase; reveal?: boolean },
   ): TransitionConfig {
     if (params.reveal) {
-      return revealDealerCard(node, { delay: 80, duration: 520 })
+      return revealDealerCard(node, { delay: dealerRevealDelay(lastPlayerAction), duration: 680 })
     }
 
-    return dealCard(node, { ...dealerCardMotion(params.index), rotate: -16, scale: 0.76 })
+    return dealCard(node, { ...dealerCardMotion(params.index, params.phase), rotate: -16, scale: 0.76 })
   }
 
   function resultTone(hand: PlayerHand) {
@@ -173,15 +199,15 @@
           <div
             class="playing-card--hidden"
             aria-label={uiText(language, 'hiddenDealerCard')}
-            in:dealCard={{ ...dealerCardMotion(index), rotate: -18, scale: 0.74 }}
-            out:fade={{ duration: 120 }}
+            in:dealCard={{ ...dealerCardMotion(index, phase), rotate: -18, scale: 0.74 }}
+            out:fade={{ duration: dealerRevealDelay(lastPlayerAction) }}
           ></div>
         {:else}
           <article
             class:red={isRed(card.suit)}
             class:dealer-reveal={index === 1 && phase === 'round-over'}
             class="playing-card"
-            in:dealerVisibleCardTransition={{ index, reveal: index === 1 && phase === 'round-over' }}
+            in:dealerVisibleCardTransition={{ index, phase, reveal: index === 1 && phase === 'round-over' }}
           >
             <div class="card-corner">
               <span>{card.rank}</span>
@@ -206,7 +232,6 @@
           </div>
           <span class="phase-pill">{uiText(language, 'tapDeal')}</span>
         </div>
-        <p class="bet-hint">{uiText(language, 'persistenceHint')}</p>
       </div>
     {/if}
 
@@ -225,7 +250,7 @@
             <p class="hand-caption">{uiText(language, 'playerHand')} {index + 1}</p>
             <h3>{formatMoney(hand.bet)} {uiText(language, 'onFelt')}</h3>
           </div>
-          <span class={`result-pill ${resultTone(hand)}`}>{resultText(hand, language)}</span>
+          <span class={`result-pill hand-total ${resultTone(hand)}`}>{resultText(hand, language)}</span>
         </div>
 
         <div class="seat-cards">

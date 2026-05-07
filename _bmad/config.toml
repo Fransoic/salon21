@@ -11,7 +11,7 @@
 # ─────────────────────────────────────────────────────────────────
 
 [core]
-project_name = "simbj"
+project_name = "salon21"
 document_output_language = "English"
 output_folder = "{project-root}/_bmad-output"
 

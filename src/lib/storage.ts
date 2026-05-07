@@ -1,18 +1,22 @@
 import type { GameState, GameStats, StoredProfile } from './game/types'
 
-const STORAGE_KEY = 'simbj.blackjack.profile.v1'
-const SETTINGS_KEY = 'simbj.blackjack.settings.v1'
+const LEGACY_STORAGE_KEY = 'simbj.blackjack.profile.v1'
+const LEGACY_SETTINGS_KEY = 'simbj.blackjack.settings.v1'
+const STORAGE_KEY = 'salon21.blackjack.profile.v1'
+const SETTINGS_KEY = 'salon21.blackjack.settings.v1'
 
 export type AppLanguage = 'en' | 'fr'
 
 export interface AppPreferences {
     volume: number
     language: AppLanguage
+    allowSurrender: boolean
 }
 
 export const defaultPreferences: AppPreferences = {
     volume: 0.7,
     language: 'en',
+    allowSurrender: false,
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -42,12 +46,24 @@ function isLanguage(value: unknown): value is AppLanguage {
     return value === 'en' || value === 'fr'
 }
 
-function isPreferences(value: unknown): value is AppPreferences {
-    return isRecord(value)
-        && typeof value.volume === 'number'
-        && value.volume >= 0
-        && value.volume <= 1
-        && isLanguage(value.language)
+function parsePreferences(value: unknown): AppPreferences | null {
+    if (!isRecord(value)) {
+        return null
+    }
+
+    if (typeof value.volume !== 'number' || value.volume < 0 || value.volume > 1 || !isLanguage(value.language)) {
+        return null
+    }
+
+    if ('allowSurrender' in value && typeof value.allowSurrender !== 'boolean') {
+        return null
+    }
+
+    return {
+        volume: value.volume,
+        language: value.language,
+        allowSurrender: typeof value.allowSurrender === 'boolean' ? value.allowSurrender : defaultPreferences.allowSurrender,
+    }
 }
 
 export function loadProfile(): StoredProfile | null {
@@ -56,7 +72,7 @@ export function loadProfile(): StoredProfile | null {
     }
 
     try {
-        const raw = localStorage.getItem(STORAGE_KEY)
+        const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY)
         if (!raw) {
             return null
         }
@@ -67,13 +83,21 @@ export function loadProfile(): StoredProfile | null {
             return null
         }
 
-        return {
+        const profile = {
             bankroll: parsed.bankroll,
             currentBet: parsed.currentBet,
             stats: parsed.stats,
         }
+
+        if (!localStorage.getItem(STORAGE_KEY)) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(profile))
+            localStorage.removeItem(LEGACY_STORAGE_KEY)
+        }
+
+        return profile
     } catch {
         localStorage.removeItem(STORAGE_KEY)
+        localStorage.removeItem(LEGACY_STORAGE_KEY)
         return null
     }
 }
@@ -106,20 +130,25 @@ export function loadPreferences(): AppPreferences {
     }
 
     try {
-        const raw = localStorage.getItem(SETTINGS_KEY)
+        const raw = localStorage.getItem(SETTINGS_KEY) ?? localStorage.getItem(LEGACY_SETTINGS_KEY)
         if (!raw) {
             return { ...defaultPreferences }
         }
 
-        const parsed = JSON.parse(raw) as unknown
-        if (!isPreferences(parsed)) {
+        const preferences = parsePreferences(JSON.parse(raw) as unknown)
+        if (!preferences) {
             localStorage.removeItem(SETTINGS_KEY)
+            localStorage.removeItem(LEGACY_SETTINGS_KEY)
             return { ...defaultPreferences }
         }
 
-        return parsed
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(preferences))
+        localStorage.removeItem(LEGACY_SETTINGS_KEY)
+
+        return preferences
     } catch {
         localStorage.removeItem(SETTINGS_KEY)
+        localStorage.removeItem(LEGACY_SETTINGS_KEY)
         return { ...defaultPreferences }
     }
 }

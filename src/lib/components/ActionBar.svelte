@@ -8,31 +8,31 @@
   export let availability: ActionAvailability
   export let phase: RoundPhase
   export let language: AppLanguage = 'en'
+  export let allowSurrender = true
 
   const dispatch = createEventDispatcher<{ action: PlayerActionName }>()
 
   type ActionConfig = {
     key: PlayerActionName
     label: string
-    caption: string
     tone?: 'primary' | 'secondary' | 'danger'
   }
 
-  const actionSets = (currentLanguage: AppLanguage): Record<RoundPhase, ActionConfig[]> => ({
-    betting: [{ key: 'deal', label: uiText(currentLanguage, 'deal'), caption: uiText(currentLanguage, 'startNextHand') }],
+  const actionSets = (currentLanguage: AppLanguage, surrenderEnabled: boolean): Record<RoundPhase, ActionConfig[]> => ({
+    betting: [{ key: 'deal', label: uiText(currentLanguage, 'deal') }],
     insurance: [
-      { key: 'insurance', label: uiText(currentLanguage, 'takeInsurance'), caption: uiText(currentLanguage, 'sideBetHalfStake') },
-      { key: 'decline-insurance', label: uiText(currentLanguage, 'noInsurance'), caption: uiText(currentLanguage, 'continueWithoutCover'), tone: 'secondary' },
+      { key: 'insurance', label: uiText(currentLanguage, 'takeInsurance') },
+      { key: 'decline-insurance', label: uiText(currentLanguage, 'noInsurance'), tone: 'secondary' },
     ],
     'player-turn': [
-      { key: 'hit', label: uiText(currentLanguage, 'hit'), caption: uiText(currentLanguage, 'takeOneCard') },
-      { key: 'stand', label: uiText(currentLanguage, 'stand'), caption: uiText(currentLanguage, 'lockThisHand'), tone: 'secondary' },
-      { key: 'double', label: uiText(currentLanguage, 'double'), caption: uiText(currentLanguage, 'doubleStakeOneCard') },
-      { key: 'split', label: uiText(currentLanguage, 'split'), caption: uiText(currentLanguage, 'breakPairTwoHands') },
-      { key: 'surrender', label: uiText(currentLanguage, 'surrender'), caption: uiText(currentLanguage, 'foldForHalfBack'), tone: 'danger' },
+      { key: 'hit', label: uiText(currentLanguage, 'hit') },
+      { key: 'stand', label: uiText(currentLanguage, 'stand'), tone: 'secondary' },
+      { key: 'double', label: uiText(currentLanguage, 'double') },
+      { key: 'split', label: uiText(currentLanguage, 'split') },
+      ...(surrenderEnabled ? ([{ key: 'surrender', label: uiText(currentLanguage, 'surrender'), tone: 'danger' }] as ActionConfig[]) : []),
     ],
     'dealer-turn': [],
-    'round-over': [{ key: 'next-round', label: uiText(currentLanguage, 'nextRound'), caption: uiText(currentLanguage, 'clearTable') }],
+    'round-over': [{ key: 'next-round', label: uiText(currentLanguage, 'nextRound') }],
   })
 
   function stateFor(config: ActionConfig) {
@@ -61,13 +61,12 @@
 
 <section class="actions-panel">
   <p class="panel-kicker">{uiText(language, 'tableActions')}</p>
-  <h3>{uiText(language, 'playHand')}</h3>
 
-  {#if actionSets(language)[phase].length === 0}
+  {#if actionSets(language, allowSurrender)[phase].length === 0}
     <p class="bet-hint">{uiText(language, 'dealerResolving')}</p>
   {:else}
     <div class="action-grid">
-      {#each actionSets(language)[phase] as config}
+      {#each actionSets(language, allowSurrender)[phase] as config}
         {@const status = stateFor(config)}
         <button
           type="button"
@@ -79,7 +78,6 @@
           on:click={() => dispatch('action', config.key)}
         >
           <span class="button-title">{config.label}</span>
-          <span class="button-caption">{config.caption}</span>
         </button>
       {/each}
     </div>

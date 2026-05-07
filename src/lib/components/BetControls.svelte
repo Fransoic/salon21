@@ -17,7 +17,6 @@
 <section class="bet-panel">
   <p class="panel-kicker">{uiText(language, 'betting')}</p>
   <h3>{uiText(language, 'chooseStake')}</h3>
-  <p class="bet-hint">{uiText(language, 'bettingHint')}</p>
 
   <div class="bet-grid">
     {#each betOptions as amount}
@@ -29,7 +28,6 @@
         on:click={() => dispatch('select', amount)}
       >
         <span class="bet-value">{formatMoney(amount)}</span>
-        <span class="bet-hint">{amount > bankroll ? uiText(language, 'insufficientBankroll') : amount === currentBet ? uiText(language, 'selected') : uiText(language, 'tapToWager')}</span>
       </button>
     {/each}
   </div>

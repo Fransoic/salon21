@@ -542,8 +542,9 @@ function enabled(): AvailableAction {
     return { enabled: true }
 }
 
-export function getActionAvailability(state: GameState): ActionAvailability {
+export function getActionAvailability(state: GameState, options: { allowSurrender?: boolean } = {}): ActionAvailability {
     const hand = activeHand(state)
+    const allowSurrender = options.allowSurrender ?? true
 
     return {
         deal:
@@ -566,9 +567,11 @@ export function getActionAvailability(state: GameState): ActionAvailability {
                 : disabled('Insurance is only offered against an ace up-card.'),
         declineInsurance: state.phase === 'insurance' ? enabled() : disabled('No insurance to decline.'),
         surrender:
-            state.phase === 'player-turn' && hand && state.playerHands.length === 1 && hand.cards.length === 2 && !hand.isSplitHand
-                ? enabled()
-                : disabled('Late surrender is only available on the opening hand.'),
+            !allowSurrender
+                ? disabled('Late surrender is disabled in table controls.')
+                : state.phase === 'player-turn' && hand && state.playerHands.length === 1 && hand.cards.length === 2 && !hand.isSplitHand
+                    ? enabled()
+                    : disabled('Late surrender is only available on the opening hand.'),
         nextRound: state.phase === 'round-over' ? enabled() : disabled('Finish the current round first.'),
     }
 }

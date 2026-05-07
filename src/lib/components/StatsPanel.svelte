@@ -18,7 +18,6 @@
 <aside class="stats-panel">
   <div class="stats-head">
     <p class="panel-kicker">{uiText(language, 'localSession')}</p>
-    <h3>{uiText(language, 'tableSnapshot')}</h3>
   </div>
 
   <div class="bankroll-card">
@@ -51,8 +50,8 @@
     </div>
   </div>
 
-  <details class="info-drawer" open={phase === 'round-over'}>
-    <summary>{uiText(language, 'sessionStats')}</summary>
+  <section class="info-drawer info-drawer--static" aria-label={uiText(language, 'sessionStats')}>
+    <h4 class="info-drawer-title">{uiText(language, 'sessionStats')}</h4>
     <div class="stats-grid drawer-grid">
       <div class="stat-box">
         <span class="stat-label">{uiText(language, 'handsPlayed')}</span>
@@ -63,10 +62,10 @@
         <strong class="stat-value">{formatMoney(stats.peakBankroll)}</strong>
       </div>
     </div>
-  </details>
+  </section>
 
-  <details class="info-drawer">
-    <summary>{uiText(language, 'houseRules')}</summary>
+  <section class="info-drawer info-drawer--static" aria-label={uiText(language, 'houseRules')}>
+    <h4 class="info-drawer-title">{uiText(language, 'houseRules')}</h4>
     <div class="rules-grid">
       <article class="rule-card">
         <h4>{uiText(language, 'houseRulesCoreTitle')}</h4>
@@ -81,7 +80,7 @@
         <p>{uiText(language, 'houseRulesPersistenceBody')}</p>
       </article>
     </div>
-  </details>
+  </section>
 
   <div class="stats-footer">
     <button type="button" class="reset-button" disabled={phase === 'player-turn' || phase === 'insurance'} on:click={() => dispatch('reset')}>
