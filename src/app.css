@@ -249,7 +249,7 @@ h1 {
 .step-strip {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 10px 14px;
   padding: 10px 12px;
   border-radius: 20px;
@@ -260,6 +260,7 @@ h1 {
 }
 
 .step-meta {
+  order: -1;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -432,10 +433,6 @@ h1 {
   backdrop-filter: none;
 }
 
-.control-dock .actions-panel {
-  padding-top: 14px;
-}
-
 .dock-meta {
   display: grid;
   gap: 4px;
@@ -447,6 +444,7 @@ h1 {
 
 .options-icon,
 .options-close {
+  order: -1;
   display: inline-grid;
   place-items: center;
   width: 34px;
@@ -710,6 +708,7 @@ h1 {
 }
 
 .hand-total {
+  font-size: 1.15rem;
   padding: 8px 12px;
   font-weight: 700;
 }
@@ -763,6 +762,8 @@ h1 {
 .dealer-total {
   background: rgba(138, 231, 184, 0.16);
   color: #9af1c0;
+  font-size: 1.15rem;
+  font-weight: 700;
 }
 
 @keyframes hidden-card-glow {
@@ -1033,6 +1034,36 @@ h1 {
   padding: 12px 14px;
   color: #082019;
   background: linear-gradient(180deg, #efddb1, #d1b16a);
+}
+
+.action-button.action-button--hit {
+  color: #ffd7dd;
+  background: rgba(180, 73, 95, 0.16);
+  border: 1px solid rgba(180, 73, 95, 0.28);
+}
+
+.action-button.action-button--stand {
+  color: #c8f0d9;
+  background: rgba(47, 148, 103, 0.18);
+  border: 1px solid rgba(47, 148, 103, 0.32);
+}
+
+.action-button.action-button--double {
+  color: #ffe0ab;
+  background: rgba(209, 141, 77, 0.18);
+  border: 1px solid rgba(209, 141, 77, 0.32);
+}
+
+.action-button.action-button--split {
+  color: #ffe3a6;
+  background: rgba(233, 206, 134, 0.14);
+  border: 1px solid rgba(233, 206, 134, 0.28);
+}
+
+.action-button.action-button--surrender {
+  color: #f2d0ff;
+  background: rgba(132, 94, 194, 0.18);
+  border: 1px solid rgba(132, 94, 194, 0.3);
 }
 
 .action-button.secondary {

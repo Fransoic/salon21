@@ -15,7 +15,6 @@
 </script>
 
 <section class="bet-panel">
-  <p class="panel-kicker">{uiText(language, 'betting')}</p>
   <h3>{uiText(language, 'chooseStake')}</h3>
 
   <div class="bet-grid">

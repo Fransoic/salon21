@@ -18,6 +18,23 @@
     tone?: 'primary' | 'secondary' | 'danger'
   }
 
+  function styleClassFor(key: PlayerActionName): string {
+    switch (key) {
+      case 'hit':
+        return 'action-button--hit'
+      case 'stand':
+        return 'action-button--stand'
+      case 'double':
+        return 'action-button--double'
+      case 'split':
+        return 'action-button--split'
+      case 'surrender':
+        return 'action-button--surrender'
+      default:
+        return ''
+    }
+  }
+
   const actionSets = (currentLanguage: AppLanguage, surrenderEnabled: boolean): Record<RoundPhase, ActionConfig[]> => ({
     betting: [{ key: 'deal', label: uiText(currentLanguage, 'deal') }],
     insurance: [
@@ -60,8 +77,6 @@
 </script>
 
 <section class="actions-panel">
-  <p class="panel-kicker">{uiText(language, 'tableActions')}</p>
-
   {#if actionSets(language, allowSurrender)[phase].length === 0}
     <p class="bet-hint">{uiText(language, 'dealerResolving')}</p>
   {:else}
@@ -72,7 +87,7 @@
           type="button"
           class:secondary={config.tone === 'secondary'}
           class:danger={config.tone === 'danger'}
-          class="action-button"
+          class={`action-button ${styleClassFor(config.key)}`}
           title={translateDynamic(language, status.reason ?? '')}
           disabled={!status.enabled}
           on:click={() => dispatch('action', config.key)}

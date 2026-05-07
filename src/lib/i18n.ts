@@ -97,7 +97,7 @@ const copy = {
         close: 'Fermer',
         optionsSections: 'Sections des options',
         optionsControlsHint: 'Reglez le son, la langue et les regles de table pour cet appareil.',
-        optionsStrategyHint: 'Consultez les decisions recommandees pour les regles actuelles a 6 decks.',
+        optionsStrategyHint: 'Consultez la strategie conseillee pour 6 decks.',
         optionsSessionHint: 'Suivez la cagnotte, la serie et la reinitialisation locale.',
         betting: 'Mise',
         chooseStake: 'Choisissez votre mise',
@@ -165,7 +165,7 @@ const copy = {
 export type CopyKey = keyof typeof copy.en
 
 const exactTranslations: Record<string, string> = {
-    'Choose a bet and deal a new round.': 'Choisissez une mise et distribuez une nouvelle manche.',
+    'Choose a bet and deal a new round.': 'Choisissez une mise puis distribuez.',
     'Choose a bet and deal the next round.': 'Choisissez une mise et distribuez la manche suivante.',
     'Your bankroll does not cover that bet.': 'Votre bankroll ne couvre pas cette mise.',
     'Dealer shows an ace. Insurance?': 'Le croupier montre un as. Assurance ?',

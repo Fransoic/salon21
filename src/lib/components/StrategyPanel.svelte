@@ -30,7 +30,9 @@
 
   const panelCopy = {
     en: {
+      focus: 'Current focus',
       dealerUpcard: 'Dealer upcard',
+      dealerUpcardCompact: 'Dealer',
       playerHand: 'Player hand',
       playerHandCompact: 'Hand',
       legend: 'Legend',
@@ -47,7 +49,9 @@
       },
     },
     fr: {
+      focus: 'Repere actif',
       dealerUpcard: 'Carte visible du croupier',
+      dealerUpcardCompact: 'Croupier',
       playerHand: 'Main joueur',
       playerHandCompact: 'Main',
       legend: 'Legende',
@@ -264,6 +268,22 @@
 </script>
 
 <aside class="strategy-panel">
+  {#if strategyFocus}
+    <div class="strategy-focus-banner" aria-live="polite">
+      <span class="strategy-focus-label">{content.focus}</span>
+      <div class="strategy-focus-pills">
+        <span class="strategy-focus-pill">
+          <span>{content.playerHandCompact}</span>
+          <strong>{strategyFocus.rowLabel}</strong>
+        </span>
+        <span class="strategy-focus-pill strategy-focus-pill--dealer">
+          <span>{content.dealerUpcardCompact}</span>
+          <strong>{strategyFocus.dealerHeader}</strong>
+        </span>
+      </div>
+    </div>
+  {/if}
+
   <div class="strategy-sections">
     {#each sections as section}
       <section class="strategy-block">
@@ -326,6 +346,60 @@
   .strategy-sections {
     display: grid;
     gap: 12px;
+  }
+
+  .strategy-focus-banner {
+    display: grid;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 18px;
+    border: 1px solid rgba(255, 223, 138, 0.34);
+    background:
+      linear-gradient(135deg, rgba(233, 206, 134, 0.2), rgba(47, 148, 103, 0.12)),
+      rgba(11, 18, 18, 0.58);
+    box-shadow: inset 0 1px 0 rgba(255, 223, 138, 0.1), var(--shadow-sm);
+  }
+
+  .strategy-focus-label {
+    color: rgba(246, 240, 223, 0.72);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .strategy-focus-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .strategy-focus-pill {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 999px;
+    background: rgba(6, 11, 11, 0.72);
+    color: rgba(246, 240, 223, 0.96);
+    box-shadow: inset 0 0 0 1px rgba(255, 223, 138, 0.18);
+  }
+
+  .strategy-focus-pill span {
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .strategy-focus-pill strong {
+    color: var(--ink-100);
+    font-size: 1rem;
+    font-weight: 800;
+    text-shadow: 0 1px 10px rgba(0, 0, 0, 0.28);
+  }
+
+  .strategy-focus-pill--dealer strong {
+    color: #baf6d3;
   }
 
   .strategy-legend {
@@ -408,30 +482,45 @@
   }
 
   .strategy-table td {
+    position: relative;
     transition: background-color 160ms ease, box-shadow 160ms ease;
   }
 
-  .strategy-axis--active,
   .strategy-row--active > th,
+  .strategy-axis--active,
   .strategy-column--active {
-    background: rgba(209, 141, 77, 0.12);
+    background: rgba(209, 141, 77, 0.2);
+  }
+
+  .strategy-row--active td {
+    background: rgba(242, 227, 183, 0.08);
   }
 
   .strategy-axis--active {
     color: var(--ink-100);
-    box-shadow: inset 0 0 0 1px rgba(209, 141, 77, 0.22);
+    box-shadow: inset 0 0 0 1px rgba(255, 223, 138, 0.42);
   }
 
   .strategy-cell--active {
     background:
-      radial-gradient(circle at center, rgba(209, 141, 77, 0.2), rgba(209, 141, 77, 0.08) 70%),
-      rgba(242, 227, 183, 0.04);
-    box-shadow: inset 0 0 0 1px rgba(242, 227, 183, 0.14);
+      radial-gradient(circle at center, rgba(255, 223, 138, 0.36), rgba(209, 141, 77, 0.16) 72%),
+      rgba(242, 227, 183, 0.14);
+    box-shadow: inset 0 0 0 2px rgba(255, 223, 138, 0.3), 0 0 0 1px rgba(255, 223, 138, 0.12);
+    z-index: 1;
+  }
+
+  .strategy-cell--active::after {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 223, 138, 0.72);
+    pointer-events: none;
   }
 
   .strategy-cell--active .strategy-chip {
-    transform: scale(1.06);
-    box-shadow: 0 0 0 2px rgba(242, 227, 183, 0.16), 0 10px 20px rgba(0, 0, 0, 0.18);
+    transform: scale(1.08);
+    box-shadow: 0 0 0 2px rgba(255, 223, 138, 0.28), 0 10px 20px rgba(0, 0, 0, 0.24);
   }
 
   .strategy-chip {
@@ -481,6 +570,20 @@
   }
 
   @media (max-width: 640px) {
+    .strategy-focus-banner {
+      padding: 10px;
+      gap: 8px;
+    }
+
+    .strategy-focus-pill {
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .strategy-focus-pill strong {
+      font-size: 0.92rem;
+    }
+
     .strategy-legend {
       grid-template-columns: 1fr;
     }
