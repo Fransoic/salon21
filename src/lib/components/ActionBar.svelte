@@ -9,6 +9,7 @@
   export let phase: RoundPhase
   export let language: AppLanguage = 'en'
   export let allowSurrender = true
+  export let recommendedAction: PlayerActionName | null = null
 
   const dispatch = createEventDispatcher<{ action: PlayerActionName }>()
 
@@ -20,6 +21,8 @@
 
   function styleClassFor(key: PlayerActionName): string {
     switch (key) {
+      case 'deal':
+        return 'action-button--deal'
       case 'hit':
         return 'action-button--hit'
       case 'stand':
@@ -87,11 +90,15 @@
           type="button"
           class:secondary={config.tone === 'secondary'}
           class:danger={config.tone === 'danger'}
+          class:recommended={config.key === recommendedAction && status.enabled}
           class={`action-button ${styleClassFor(config.key)}`}
           title={translateDynamic(language, status.reason ?? '')}
           disabled={!status.enabled}
           on:click={() => dispatch('action', config.key)}
         >
+          {#if config.key === recommendedAction && status.enabled}
+            <span class="strategy-indicator" aria-hidden="true"></span>
+          {/if}
           <span class="button-title">{config.label}</span>
         </button>
       {/each}

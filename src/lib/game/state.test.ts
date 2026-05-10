@@ -9,6 +9,7 @@ import {
     getActionAvailability,
     hit,
     resetProgress,
+    setBet,
     shouldPersistProfile,
     split,
     stand,
@@ -163,6 +164,32 @@ describe('state transitions', () => {
         const illegalDouble = doubleDown(afterHit)
 
         expect(illegalDouble).toEqual(afterHit)
+    })
+
+    it('snaps and restores a custom bet to a five-unit step', () => {
+        const updated = setBet(createInitialState(), 7)
+        const restored = createInitialState({
+            bankroll: updated.bankroll,
+            currentBet: updated.currentBet,
+            stats: updated.stats,
+        })
+
+        expect(updated.currentBet).toBe(5)
+        expect(restored.currentBet).toBe(5)
+    })
+
+    it('blocks dealing when the selected bet is invalid', () => {
+        const invalid = {
+            ...createInitialState(),
+            currentBet: 0,
+        }
+
+        const availability = getActionAvailability(invalid)
+        const afterDealAttempt = dealRound(invalid)
+
+        expect(availability.deal.enabled).toBe(false)
+        expect(afterDealAttempt.phase).toBe('betting')
+        expect(afterDealAttempt.message).toBe('Select a valid bet before dealing.')
     })
 
     it('resets progress back to the table defaults', () => {

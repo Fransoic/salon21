@@ -25,6 +25,7 @@
     surrender,
     takeInsurance,
   } from './lib/game/state'
+  import { getRecommendedAction } from './lib/game/strategy'
   import type { GameState, PlayerActionName } from './lib/game/types'
   import {
     clearProfile,
@@ -94,6 +95,12 @@
     game.phase === 'insurance' || game.phase === 'player-turn' ? (game.playerHands[game.activeHandIndex]?.cards ?? []) : []
   $: strategyDealerUpcard =
     game.phase === 'insurance' || game.phase === 'player-turn' ? (game.dealerHand[0]?.rank ?? null) : null
+  $: recommendedAction =
+    preferences.showStrategyHint && game.phase === 'player-turn'
+      ? getRecommendedAction(strategyHandCards, strategyDealerUpcard, availability, {
+          allowSurrender: preferences.allowSurrender,
+        })
+      : null
   $: if (hydrated && shouldPersistProfile(game)) {
     saveProfile(game)
   }
@@ -153,6 +160,11 @@
   function handleSurrenderToggle(event: Event) {
     const allowSurrender = (event.currentTarget as HTMLInputElement).checked
     updatePreferences({ ...preferences, allowSurrender })
+  }
+
+  function handleStrategyHintToggle(event: Event) {
+    const showStrategyHint = (event.currentTarget as HTMLInputElement).checked
+    updatePreferences({ ...preferences, showStrategyHint })
   }
 
   function outcomeSound(nextGame: GameState) {
@@ -469,79 +481,6 @@
 </svelte:head>
 
 <main class:app-shell--options={currentPage === 'options'} class="app-shell">
-  <header class="top-strip">
-    <h1>{uiText(preferences.language, 'appTitle')}</h1>
-
-    <div class="hero-stats simple-stats">
-      <div class="top-stat">
-        <span>{uiText(preferences.language, 'bankroll')}</span>
-        <strong>{formatMoney(game.bankroll)}</strong>
-      </div>
-      <div class="top-stat">
-        <span>{uiText(preferences.language, 'bet')}</span>
-        <strong>{formatMoney(game.currentBet)}</strong>
-      </div>
-      <div class="top-stat">
-        <span>{uiText(preferences.language, 'swing')}</span>
-        <strong class:last-win={game.lastRoundDelta > 0} class:last-loss={game.lastRoundDelta < 0}>
-          {formatDelta(game.lastRoundDelta, preferences.language)}
-        </strong>
-      </div>
-      <div class="top-stat">
-        <span>{uiText(preferences.language, 'hands')}</span>
-        <strong>{game.stats.handsPlayed}</strong>
-      </div>
-    </div>
-  </header>
-
-  <section class="step-strip" aria-label="Current step">
-    <p class="step-copy">
-      {#if currentPage === 'table'}
-        {translateDynamic(preferences.language, game.message)}
-      {:else}
-        {uiText(preferences.language, optionsDescription(activeOptionsTab))}
-      {/if}
-    </p>
-    <div class="step-meta">
-      <div class="phase-badge">
-        {#if currentPage === 'table'}
-          {phaseLabel(preferences.language, game.phase)}
-        {:else}
-          {uiText(preferences.language, 'options')}
-        {/if}
-      </div>
-
-      {#if currentPage === 'table'}
-        <button type="button" class="options-icon" aria-label={uiText(preferences.language, 'openOptions')} on:click={openOptions}>
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              d="M4 7h10M18 7h2M8 12h12M4 12h2M4 17h14M20 17h0"
-              fill="none"
-              stroke="currentColor"
-              stroke-linecap="round"
-              stroke-width="1.8"
-            />
-            <circle cx="16" cy="7" r="2.2" fill="currentColor" />
-            <circle cx="8" cy="12" r="2.2" fill="currentColor" />
-            <circle cx="18" cy="17" r="2.2" fill="currentColor" />
-          </svg>
-        </button>
-      {:else}
-        <button type="button" class="options-close" aria-label={uiText(preferences.language, 'close')} on:click={closeOptions}>
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              d="M6 6l12 12M18 6l-12 12"
-              fill="none"
-              stroke="currentColor"
-              stroke-linecap="round"
-              stroke-width="1.8"
-            />
-          </svg>
-        </button>
-      {/if}
-    </div>
-  </section>
-
   {#if currentPage === 'table'}
     <section class="play-surface">
       <div class="stage-stack">
@@ -595,6 +534,7 @@
           availability={availability}
           language={preferences.language}
           allowSurrender={preferences.allowSurrender}
+          recommendedAction={recommendedAction}
           on:action={(event) => handleAction(event.detail)}
         />
       </div>
@@ -604,6 +544,26 @@
       <div class="stage-stack">
         <div class="options-page">
           <div class="options-tabs" role="tablist" aria-label={uiText(preferences.language, 'optionsSections')}>
+            <button
+              type="button"
+              role="tab"
+              class:active={activeOptionsTab === 'strategy'}
+              class="options-tab"
+              aria-label={uiText(preferences.language, 'strategy')}
+              aria-selected={activeOptionsTab === 'strategy'}
+              title={uiText(preferences.language, 'strategy')}
+              on:click={() => goToOptionsTab('strategy')}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M6.5 5.5h11a1.5 1.5 0 0 1 1.5 1.5v10a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 17V7a1.5 1.5 0 0 1 1.5-1.5Z"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                />
+                <path d="M9 9.5h6M9 12h6M9 14.5h3.5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8" />
+              </svg>
+            </button>
             <button
               type="button"
               role="tab"
@@ -625,26 +585,6 @@
                 <circle cx="16" cy="7" r="2.2" fill="currentColor" />
                 <circle cx="8" cy="12" r="2.2" fill="currentColor" />
                 <circle cx="18" cy="17" r="2.2" fill="currentColor" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              class:active={activeOptionsTab === 'strategy'}
-              class="options-tab"
-              aria-label={uiText(preferences.language, 'strategy')}
-              aria-selected={activeOptionsTab === 'strategy'}
-              title={uiText(preferences.language, 'strategy')}
-              on:click={() => goToOptionsTab('strategy')}
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M6.5 5.5h11a1.5 1.5 0 0 1 1.5 1.5v10a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 17V7a1.5 1.5 0 0 1 1.5-1.5Z"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                />
-                <path d="M9 9.5h6M9 12h6M9 14.5h3.5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8" />
               </svg>
             </button>
             <button
@@ -677,16 +617,13 @@
             <div class="settings-grid">
               <article class="setting-card">
                 <div class="setting-head">
-                  <div>
-                    <p class="panel-kicker">{uiText(preferences.language, 'sound')}</p>
-                    <h3>{uiText(preferences.language, 'volume')}</h3>
-                  </div>
+                  <h3>{uiText(preferences.language, 'volume')}</h3>
                   <strong class="volume-readout">{Math.round(preferences.volume * 100)}%</strong>
                 </div>
-                <label class="setting-copy" for="volume-control">{uiText(preferences.language, 'volumeHint')}</label>
                 <input
                   id="volume-control"
                   class="range-control"
+                  aria-label={uiText(preferences.language, 'volume')}
                   type="range"
                   min="0"
                   max="1"
@@ -699,13 +636,15 @@
 
               <article class="setting-card">
                 <div class="setting-head">
-                  <div>
-                    <p class="panel-kicker">{uiText(preferences.language, 'interface')}</p>
-                    <h3>{uiText(preferences.language, 'language')}</h3>
-                  </div>
+                  <h3>{uiText(preferences.language, 'language')}</h3>
                 </div>
-                <label class="setting-copy" for="language-control">{uiText(preferences.language, 'languageHint')}</label>
-                <select id="language-control" class="select-control" value={preferences.language} on:change={handleLanguageChange}>
+                <select
+                  id="language-control"
+                  class="select-control"
+                  aria-label={uiText(preferences.language, 'language')}
+                  value={preferences.language}
+                  on:change={handleLanguageChange}
+                >
                   {#each languageOptions as option}
                     <option value={option}>{languageOptionLabel(preferences.language, option)}</option>
                   {/each}
@@ -714,10 +653,7 @@
 
               <article class="setting-card">
                 <div class="setting-head">
-                  <div>
-                    <p class="panel-kicker">{uiText(preferences.language, 'houseRules')}</p>
-                    <h3>{uiText(preferences.language, 'lateSurrender')}</h3>
-                  </div>
+                  <h3>{uiText(preferences.language, 'lateSurrender')}</h3>
                   <input
                     id="surrender-control"
                     class="checkbox-control"
@@ -727,6 +663,20 @@
                   />
                 </div>
                 <label class="setting-copy" for="surrender-control">{uiText(preferences.language, 'lateSurrenderHint')}</label>
+              </article>
+
+              <article class="setting-card">
+                <div class="setting-head">
+                  <h3>{uiText(preferences.language, 'strategyAssist')}</h3>
+                  <input
+                    id="strategy-hint-control"
+                    class="checkbox-control"
+                    type="checkbox"
+                    checked={preferences.showStrategyHint}
+                    on:change={handleStrategyHintToggle}
+                  />
+                </div>
+                <label class="setting-copy" for="strategy-hint-control">{uiText(preferences.language, 'strategyAssistHint')}</label>
               </article>
             </div>
           </div>
@@ -754,4 +704,79 @@
       </div>
     </section>
   {/if}
+
+  <header class="top-strip" aria-label="Current step">
+    <div class="top-strip-main">
+      <h1>{uiText(preferences.language, 'appTitle')}</h1>
+
+      <div class="hero-stats simple-stats">
+        <div class="top-stat">
+          <span>{uiText(preferences.language, 'bankroll')}</span>
+          <strong>{formatMoney(game.bankroll)}</strong>
+        </div>
+        <div class="top-stat">
+          <span>{uiText(preferences.language, 'bet')}</span>
+          <strong>{formatMoney(game.currentBet)}</strong>
+        </div>
+        <div class="top-stat">
+          <span>{uiText(preferences.language, 'swing')}</span>
+          <strong class:last-win={game.lastRoundDelta > 0} class:last-loss={game.lastRoundDelta < 0}>
+            {formatDelta(game.lastRoundDelta, preferences.language)}
+          </strong>
+        </div>
+        <div class="top-stat">
+          <span>{uiText(preferences.language, 'hands')}</span>
+          <strong>{game.stats.handsPlayed}</strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="top-strip-status">
+      <p class="step-copy">
+        {#if currentPage === 'table'}
+          {translateDynamic(preferences.language, game.message)}
+        {:else}
+          {uiText(preferences.language, optionsDescription(activeOptionsTab))}
+        {/if}
+      </p>
+      <div class="step-meta">
+        <div class="phase-badge">
+          {#if currentPage === 'table'}
+            {phaseLabel(preferences.language, game.phase)}
+          {:else}
+            {uiText(preferences.language, 'options')}
+          {/if}
+        </div>
+
+        {#if currentPage === 'table'}
+          <button type="button" class="options-icon" aria-label={uiText(preferences.language, 'openOptions')} on:click={openOptions}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M4 7h10M18 7h2M8 12h12M4 12h2M4 17h14M20 17h0"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-width="1.8"
+              />
+              <circle cx="16" cy="7" r="2.2" fill="currentColor" />
+              <circle cx="8" cy="12" r="2.2" fill="currentColor" />
+              <circle cx="18" cy="17" r="2.2" fill="currentColor" />
+            </svg>
+          </button>
+        {:else}
+          <button type="button" class="options-close" aria-label={uiText(preferences.language, 'close')} on:click={closeOptions}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M6 6l12 12M18 6l-12 12"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-width="1.8"
+              />
+            </svg>
+          </button>
+        {/if}
+      </div>
+    </div>
+  </header>
 </main>

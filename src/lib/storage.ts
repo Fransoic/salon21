@@ -11,12 +11,14 @@ export interface AppPreferences {
     volume: number
     language: AppLanguage
     allowSurrender: boolean
+    showStrategyHint: boolean
 }
 
 export const defaultPreferences: AppPreferences = {
     volume: 0.7,
     language: 'en',
     allowSurrender: false,
+    showStrategyHint: false,
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -59,10 +61,15 @@ function parsePreferences(value: unknown): AppPreferences | null {
         return null
     }
 
+    if ('showStrategyHint' in value && typeof value.showStrategyHint !== 'boolean') {
+        return null
+    }
+
     return {
         volume: value.volume,
         language: value.language,
         allowSurrender: typeof value.allowSurrender === 'boolean' ? value.allowSurrender : defaultPreferences.allowSurrender,
+        showStrategyHint: typeof value.showStrategyHint === 'boolean' ? value.showStrategyHint : defaultPreferences.showStrategyHint,
     }
 }
 

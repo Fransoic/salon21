@@ -22,6 +22,7 @@ import type {
 
 const STARTING_BANKROLL = 500
 const DEFAULT_BET = 25
+const BET_STEP = 5
 
 let handCounter = 0
 
@@ -48,6 +49,27 @@ function mergeStats(stats?: Partial<GameStats>): GameStats {
         ...createDefaultStats(),
         ...stats,
     }
+}
+
+function normalizeBet(amount: number, bankroll: number): number {
+    if (!Number.isFinite(amount) || bankroll <= 0) {
+        return 0
+    }
+
+    const cappedAmount = Math.min(Math.floor(amount), bankroll)
+    if (cappedAmount <= 0) {
+        return 0
+    }
+
+    if (bankroll < BET_STEP) {
+        return cappedAmount
+    }
+
+    if (cappedAmount < BET_STEP) {
+        return 0
+    }
+
+    return Math.floor(cappedAmount / BET_STEP) * BET_STEP
 }
 
 function makeHand(cards: Card[], bet: number, overrides?: Partial<PlayerHand>): PlayerHand {
@@ -266,11 +288,11 @@ function moveToNextHandOrDealer(state: GameState, rng: () => number): GameState 
 
 export function createInitialState(profile?: StoredProfile, rng: () => number = Math.random): GameState {
     const bankroll = profile?.bankroll ?? STARTING_BANKROLL
-    const currentBet = Math.min(profile?.currentBet ?? DEFAULT_BET, bankroll)
+    const currentBet = normalizeBet(profile?.currentBet ?? DEFAULT_BET, bankroll) || normalizeBet(DEFAULT_BET, bankroll)
 
     return {
         bankroll,
-        currentBet: Math.max(10, currentBet),
+        currentBet,
         deckCount: HOUSE_RULES.deckCount,
         stats: mergeStats(profile?.stats),
         phase: 'betting',
@@ -286,18 +308,31 @@ export function createInitialState(profile?: StoredProfile, rng: () => number = 
 }
 
 export function setBet(state: GameState, amount: number): GameState {
-    if (state.phase !== 'betting' || amount > state.bankroll || amount <= 0) {
+    const normalizedBet = normalizeBet(amount, state.bankroll)
+
+    if (state.phase !== 'betting' || normalizedBet === 0) {
         return state
     }
 
     return {
         ...state,
-        currentBet: amount,
+        currentBet: normalizedBet,
     }
 }
 
 export function dealRound(state: GameState, rng: () => number = Math.random): GameState {
-    if (state.phase !== 'betting' || state.currentBet > state.bankroll) {
+    if (state.phase !== 'betting') {
+        return state
+    }
+
+    if (state.currentBet <= 0) {
+        return {
+            ...state,
+            message: 'Select a valid bet before dealing.',
+        }
+    }
+
+    if (state.currentBet > state.bankroll) {
         return {
             ...state,
             message: 'Your bankroll does not cover that bet.',
@@ -548,7 +583,7 @@ export function getActionAvailability(state: GameState, options: { allowSurrende
 
     return {
         deal:
-            state.phase === 'betting' && state.currentBet <= state.bankroll
+            state.phase === 'betting' && state.currentBet > 0 && state.currentBet <= state.bankroll
                 ? enabled()
                 : disabled('Select a valid bet before dealing.'),
         hit: state.phase === 'player-turn' && hand && canHitHand(hand) ? enabled() : disabled('Hit is unavailable.'),

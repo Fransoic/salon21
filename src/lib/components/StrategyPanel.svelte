@@ -1,5 +1,12 @@
 <script lang="ts">
-  import { scoreHand } from '../game/rules'
+  import {
+    dealerHeaders,
+    getStrategyFocus,
+    strategyRows,
+    type StrategyCode,
+    type StrategyRow,
+    type StrategySectionKey,
+  } from '../game/strategy'
   import type { Card, Rank } from '../game/types'
   import type { AppLanguage } from '../storage'
 
@@ -8,25 +15,11 @@
   export let activeHandCards: Card[] = []
   export let dealerUpcard: Rank | null = null
 
-  type StrategyCode = 'H' | 'S' | 'Dh' | 'Ds' | 'P' | 'Rh'
-  type StrategySectionKey = 'hard' | 'soft' | 'pairs'
-  type StrategyRow = {
-    label: string
-    moves: StrategyCode[]
-  }
-  type StrategyFocus = {
-    section: StrategySectionKey
-    rowLabel: string
-    dealerHeader: string
-  }
   type StrategySection = {
     key: StrategySectionKey
     title: string
     rows: StrategyRow[]
   }
-
-  const dealerHeaders = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'A']
-  const tenValueRanks = new Set<Rank>(['10', 'J', 'Q', 'K'])
 
   const panelCopy = {
     en: {
@@ -69,75 +62,6 @@
     },
   } as const
 
-  const strategyRows: Record<AppLanguage, { hard: StrategyRow[]; soft: StrategyRow[]; pairs: StrategyRow[] }> = {
-    en: {
-      hard: [
-        { label: '5-8', moves: ['H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H'] },
-        { label: '9', moves: ['H', 'Dh', 'Dh', 'Dh', 'Dh', 'H', 'H', 'H', 'H', 'H'] },
-        { label: '10', moves: ['Dh', 'Dh', 'Dh', 'Dh', 'Dh', 'Dh', 'Dh', 'Dh', 'H', 'H'] },
-        { label: '11', moves: ['Dh', 'Dh', 'Dh', 'Dh', 'Dh', 'Dh', 'Dh', 'Dh', 'Dh', 'Dh'] },
-        { label: '12', moves: ['H', 'H', 'S', 'S', 'S', 'H', 'H', 'H', 'H', 'H'] },
-        { label: '13-14', moves: ['S', 'S', 'S', 'S', 'S', 'H', 'H', 'H', 'H', 'H'] },
-        { label: '15', moves: ['S', 'S', 'S', 'S', 'S', 'H', 'H', 'H', 'Rh', 'H'] },
-        { label: '16', moves: ['S', 'S', 'S', 'S', 'S', 'H', 'H', 'Rh', 'Rh', 'Rh'] },
-        { label: '17+', moves: ['S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S'] },
-      ],
-      soft: [
-        { label: 'A,2-A,3', moves: ['H', 'H', 'H', 'Dh', 'Dh', 'H', 'H', 'H', 'H', 'H'] },
-        { label: 'A,4-A,5', moves: ['H', 'H', 'Dh', 'Dh', 'Dh', 'H', 'H', 'H', 'H', 'H'] },
-        { label: 'A,6', moves: ['H', 'Dh', 'Dh', 'Dh', 'Dh', 'H', 'H', 'H', 'H', 'H'] },
-        { label: 'A,7', moves: ['S', 'Ds', 'Ds', 'Ds', 'Ds', 'S', 'S', 'H', 'H', 'H'] },
-        { label: 'A,8', moves: ['S', 'S', 'S', 'S', 'Ds', 'S', 'S', 'S', 'S', 'S'] },
-        { label: 'A,9', moves: ['S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S'] },
-      ],
-      pairs: [
-        { label: 'A,A', moves: ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'] },
-        { label: '10,10', moves: ['S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S'] },
-        { label: '9,9', moves: ['P', 'P', 'P', 'P', 'P', 'S', 'P', 'P', 'S', 'S'] },
-        { label: '8,8', moves: ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'] },
-        { label: '7,7', moves: ['P', 'P', 'P', 'P', 'P', 'P', 'H', 'H', 'H', 'H'] },
-        { label: '6,6', moves: ['P', 'P', 'P', 'P', 'P', 'H', 'H', 'H', 'H', 'H'] },
-        { label: '5,5', moves: ['Dh', 'Dh', 'Dh', 'Dh', 'Dh', 'Dh', 'Dh', 'Dh', 'H', 'H'] },
-        { label: '4,4', moves: ['H', 'H', 'H', 'P', 'P', 'H', 'H', 'H', 'H', 'H'] },
-        { label: '3,3', moves: ['P', 'P', 'P', 'P', 'P', 'P', 'H', 'H', 'H', 'H'] },
-        { label: '2,2', moves: ['P', 'P', 'P', 'P', 'P', 'P', 'H', 'H', 'H', 'H'] },
-      ],
-    },
-    fr: {
-      hard: [
-        { label: '5-8', moves: ['H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H'] },
-        { label: '9', moves: ['H', 'Dh', 'Dh', 'Dh', 'Dh', 'H', 'H', 'H', 'H', 'H'] },
-        { label: '10', moves: ['Dh', 'Dh', 'Dh', 'Dh', 'Dh', 'Dh', 'Dh', 'Dh', 'H', 'H'] },
-        { label: '11', moves: ['Dh', 'Dh', 'Dh', 'Dh', 'Dh', 'Dh', 'Dh', 'Dh', 'Dh', 'Dh'] },
-        { label: '12', moves: ['H', 'H', 'S', 'S', 'S', 'H', 'H', 'H', 'H', 'H'] },
-        { label: '13-14', moves: ['S', 'S', 'S', 'S', 'S', 'H', 'H', 'H', 'H', 'H'] },
-        { label: '15', moves: ['S', 'S', 'S', 'S', 'S', 'H', 'H', 'H', 'Rh', 'H'] },
-        { label: '16', moves: ['S', 'S', 'S', 'S', 'S', 'H', 'H', 'Rh', 'Rh', 'Rh'] },
-        { label: '17+', moves: ['S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S'] },
-      ],
-      soft: [
-        { label: 'A,2-A,3', moves: ['H', 'H', 'H', 'Dh', 'Dh', 'H', 'H', 'H', 'H', 'H'] },
-        { label: 'A,4-A,5', moves: ['H', 'H', 'Dh', 'Dh', 'Dh', 'H', 'H', 'H', 'H', 'H'] },
-        { label: 'A,6', moves: ['H', 'Dh', 'Dh', 'Dh', 'Dh', 'H', 'H', 'H', 'H', 'H'] },
-        { label: 'A,7', moves: ['S', 'Ds', 'Ds', 'Ds', 'Ds', 'S', 'S', 'H', 'H', 'H'] },
-        { label: 'A,8', moves: ['S', 'S', 'S', 'S', 'Ds', 'S', 'S', 'S', 'S', 'S'] },
-        { label: 'A,9', moves: ['S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S'] },
-      ],
-      pairs: [
-        { label: 'A,A', moves: ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'] },
-        { label: '10,10', moves: ['S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S'] },
-        { label: '9,9', moves: ['P', 'P', 'P', 'P', 'P', 'S', 'P', 'P', 'S', 'S'] },
-        { label: '8,8', moves: ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'] },
-        { label: '7,7', moves: ['P', 'P', 'P', 'P', 'P', 'P', 'H', 'H', 'H', 'H'] },
-        { label: '6,6', moves: ['P', 'P', 'P', 'P', 'P', 'H', 'H', 'H', 'H', 'H'] },
-        { label: '5,5', moves: ['Dh', 'Dh', 'Dh', 'Dh', 'Dh', 'Dh', 'Dh', 'Dh', 'H', 'H'] },
-        { label: '4,4', moves: ['H', 'H', 'H', 'P', 'P', 'H', 'H', 'H', 'H', 'H'] },
-        { label: '3,3', moves: ['P', 'P', 'P', 'P', 'P', 'P', 'H', 'H', 'H', 'H'] },
-        { label: '2,2', moves: ['P', 'P', 'P', 'P', 'P', 'P', 'H', 'H', 'H', 'H'] },
-      ],
-    },
-  }
-
   function rowsForSurrenderSetting(rows: StrategyRow[], surrenderEnabled: boolean): StrategyRow[] {
     if (surrenderEnabled) {
       return rows
@@ -147,102 +71,6 @@
       ...row,
       moves: row.moves.map((move) => (move === 'Rh' ? 'H' : move)),
     }))
-  }
-
-  function dealerHeaderForRank(rank: Rank | null): string | null {
-    if (!rank) {
-      return null
-    }
-
-    if (tenValueRanks.has(rank)) {
-      return '10'
-    }
-
-    return rank
-  }
-
-  function pairRowLabel(cards: Card[]): string | null {
-    if (cards.length !== 2 || cards[0]?.rank !== cards[1]?.rank) {
-      return null
-    }
-
-    const rank = cards[0].rank
-    if (tenValueRanks.has(rank)) {
-      return '10,10'
-    }
-
-    return `${rank},${rank}`
-  }
-
-  function softRowLabel(total: number): string | null {
-    if (total <= 14) {
-      return 'A,2-A,3'
-    }
-
-    if (total <= 16) {
-      return 'A,4-A,5'
-    }
-
-    switch (total) {
-      case 17:
-        return 'A,6'
-      case 18:
-        return 'A,7'
-      case 19:
-        return 'A,8'
-      case 20:
-        return 'A,9'
-      default:
-        return null
-    }
-  }
-
-  function hardRowLabel(total: number): string | null {
-    if (total >= 5 && total <= 8) {
-      return '5-8'
-    }
-
-    if (total === 13 || total === 14) {
-      return '13-14'
-    }
-
-    if (total >= 17) {
-      return '17+'
-    }
-
-    if (total >= 9 && total <= 16) {
-      return String(total)
-    }
-
-    return null
-  }
-
-  function strategyFocusFor(cards: Card[], upcard: Rank | null): StrategyFocus | null {
-    const dealerHeader = dealerHeaderForRank(upcard)
-    if (!cards.length || !dealerHeader) {
-      return null
-    }
-
-    const pairLabel = pairRowLabel(cards)
-    if (pairLabel) {
-      return { section: 'pairs', rowLabel: pairLabel, dealerHeader }
-    }
-
-    const score = scoreHand(cards)
-    if (score.isBust || score.total >= 21) {
-      return null
-    }
-
-    const rowLabel = score.isSoft ? softRowLabel(score.total) : hardRowLabel(score.total)
-    if (!rowLabel) {
-      return null
-    }
-
-    return {
-      section: score.isSoft ? 'soft' : 'hard',
-      rowLabel,
-      dealerHeader,
-    }
   }
 
   function isActiveRow(sectionKey: StrategySectionKey, rowLabel: string): boolean {
@@ -259,11 +87,11 @@
 
   $: content = panelCopy[language]
   $: legendEntries = (Object.entries(content.codes) as Array<[StrategyCode, string]>).filter(([code]) => allowSurrender || code !== 'Rh')
-  $: strategyFocus = strategyFocusFor(activeHandCards, dealerUpcard)
+  $: strategyFocus = getStrategyFocus(activeHandCards, dealerUpcard)
   $: sections = [
-    { key: 'hard', title: content.hardTotals, rows: rowsForSurrenderSetting(strategyRows[language].hard, allowSurrender) },
-    { key: 'soft', title: content.softTotals, rows: rowsForSurrenderSetting(strategyRows[language].soft, allowSurrender) },
-    { key: 'pairs', title: content.pairs, rows: rowsForSurrenderSetting(strategyRows[language].pairs, allowSurrender) },
+    { key: 'hard', title: content.hardTotals, rows: rowsForSurrenderSetting(strategyRows.hard, allowSurrender) },
+    { key: 'soft', title: content.softTotals, rows: rowsForSurrenderSetting(strategyRows.soft, allowSurrender) },
+    { key: 'pairs', title: content.pairs, rows: rowsForSurrenderSetting(strategyRows.pairs, allowSurrender) },
   ] satisfies StrategySection[]
 </script>
 

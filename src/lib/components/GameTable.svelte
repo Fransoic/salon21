@@ -45,20 +45,8 @@
   }
 
   function resultText(hand: PlayerHand, currentLanguage: AppLanguage): string {
-    if (hand.result) {
-      return translateDynamic(currentLanguage, hand.result.label)
-    }
-
     const score = scoreHand(hand.cards)
-    if (score.isBust) {
-      return translateDynamic(currentLanguage, 'Bust')
-    }
-
-    if (score.isBlackjack && !hand.isSplitHand) {
-      return translateDynamic(currentLanguage, 'Blackjack')
-    }
-
-    return translateDynamic(currentLanguage, hand.isSplitAces ? `${score.total} split aces` : `${score.total}${score.isSoft ? ' soft' : ''}`)
+    return translateDynamic(currentLanguage, `${score.total}${score.isSoft ? ' soft' : ''}`)
   }
 
   function dealerText(cards: Card[], currentPhase: RoundPhase, currentLanguage: AppLanguage): string {
@@ -71,7 +59,7 @@
     }
 
     const score = scoreHand(cards)
-    return score.isBust ? translateDynamic(currentLanguage, 'Dealer busts') : translateDynamic(currentLanguage, `${score.total}${score.isSoft ? ' soft' : ''}`)
+    return translateDynamic(currentLanguage, `${score.total}${score.isSoft ? ' soft' : ''}`)
   }
 
   function dealerCardMotion(index: number, currentPhase: RoundPhase) {
